@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>П'ятнашки 6x6: Бомби та Час</title>
+  <title>П'ятнашки 6x6: Фінальна версія</title>
   <style>
     body {
       font-family: sans-serif;
@@ -128,10 +128,6 @@
     #leaderboard ol {
       padding-left: 20px;
     }
-    .time-warning {
-      color: #d32f2f;
-      animation: pulse 0.5s infinite alternate;
-    }
     .win-message {
       position: fixed;
       top: 50%;
@@ -146,10 +142,6 @@
       box-shadow: 0 4px 20px rgba(0,0,0,0.3);
       animation: fadeIn 0.3s;
       max-width: 80%;
-    }
-    @keyframes pulse {
-      from { opacity: 1; }
-      to { opacity: 0.5; }
     }
     @keyframes fadeIn {
       from { opacity: 0; transform: translate(-50%, -60%); }
@@ -182,9 +174,9 @@
 </head>
 <body>
 
-<h1>П'ятнашки 6×6: Бомби та Час</h1>
+<h1>П'ятнашки 6×6: Фінальна версія</h1>
 <div id="stats">
-  <div class="stat-box">Час: <span id="timer">4:00</span></div>
+  <div class="stat-box">Час: <span id="timer">0:00</span></div>
   <div class="stat-box">Ходи: <span id="moves">0</span></div>
 </div>
 <div id="game"></div>
@@ -207,7 +199,6 @@
   const FINAL_ORDER = ['Тік Ток', 'Рілси', 'Бравл Старс', 'Інстаграм', 'Ютуб Шортс', 'Снапчат'];
   const gridSize = 6;
   const lastRowStart = gridSize * (gridSize - 1);
-  const initialTime = 4 * 60; // 4 хвилини у секундах
   const BOMB = '💣';
   
   // Дані гри
@@ -217,7 +208,7 @@
     'Планування', 'Сон', 'Уроки', 'Настільні ігри',
     'Хобі', 'Нове слово', 'Малювання', 'Зарядка',
     'Лист', 'Іноземна мова', 'Готування', 'Документальний фільм',
-    'Дослідження Біблії', 'Щоденник', 'Волонтерство', 'Навчання'
+    'Медитація', 'Щоденник', 'Волонтерство', 'Навчання'
   ];
   
   const badTiles = [...FINAL_ORDER];
@@ -226,11 +217,10 @@
   // Стан гри
   let tiles = [];
   let timer;
-  let timeLeft = initialTime;
+  let seconds = 0;
   let moves = 0;
   let playerName = "Гравець";
-  let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
-  let bombPosition = -1;
+  let leaderboard = []; // Очищена таблиця лідерів
 
   // Ініціалізація гри
   function initGame() {
@@ -245,7 +235,7 @@
     let allTiles = [...goodTiles, ...badTiles];
     
     // Визначаємо позицію бомби у перших двох рядках (0-11 клітинки)
-    bombPosition = Math.floor(Math.random() * 12);
+    const bombPosition = Math.floor(Math.random() * 12);
     
     // Додаємо плитки до 35 клітинок (36 - 1 бомба)
     while (allTiles.length < gridSize * gridSize - 1) {
@@ -268,36 +258,23 @@
   // Скидання статистики
   function resetStats() {
     clearInterval(timer);
-    timeLeft = initialTime;
+    seconds = 0;
     moves = 0;
     updateTimerDisplay();
     document.getElementById('moves').textContent = '0';
     timer = setInterval(updateTimer, 1000);
   }
 
-  // Оновлення таймера
+  // Оновлення таймера (тепер рахує вперед)
   function updateTimer() {
-    timeLeft--;
+    seconds++;
     updateTimerDisplay();
-    
-    if (timeLeft <= 0) {
-      clearInterval(timer);
-      showMessage("Час вийшов! Спробуйте ще раз.", false);
-      setTimeout(setupGame, 1500);
-    }
   }
 
   function updateTimerDisplay() {
-    const minutes = Math.floor(timeLeft / 60);
-    const seconds = timeLeft % 60;
-    const timerElement = document.getElementById('timer');
-    timerElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
-    
-    if (timeLeft <= 30) {
-      timerElement.classList.add('time-warning');
-    } else {
-      timerElement.classList.remove('time-warning');
-    }
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    document.getElementById('timer').textContent = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
   }
 
   // Відображення гри
@@ -311,8 +288,7 @@
         div.classList.add('bomb');
         div.textContent = BOMB;
       } else if (text === '') {
-        div.
-          classList.add('empty');
+        div.classList.add('empty');
       } else if (badTiles.includes(text)) {
         div.classList.add('bad');
         div.textContent = text;
@@ -333,14 +309,11 @@
 
   // Рух плитки
   function moveTile(index) {
-    if (index === bombPosition) return;
-    
     const emptyIndex = tiles.indexOf('');
     if (emptyIndex === -1) return;
     
     const row = Math.floor(index / gridSize);
     const emptyRow = Math.floor(emptyIndex / gridSize);
-    
     const validMoves = [
       index - 1,    // ліво
       index + 1,    // право
@@ -372,11 +345,10 @@
       clearInterval(timer);
       
       // Додаємо результат до таблиці лідерів
-      const timeUsed = initialTime - timeLeft;
       leaderboard.push({
         name: playerName,
         moves: moves,
-        time: timeUsed
+        time: seconds
       });
       
       // Сортуємо за кількістю ходів
@@ -386,23 +358,24 @@
       localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
       
       // Показуємо повідомлення про перемогу
-      showMessage(`Вітаю, ${playerName}!<br>Ви перемогли за ${moves} ходів!<br>Час: ${Math.floor(timeUsed/60)}:${(timeUsed%60).toString().padStart(2, '0')}`);
-      
+      showWinMessage();
       updateLeaderboard();
     }
   }
 
-  // Функція для показу повідомлень
-  function showMessage(text, isWin = true) {
-    const existingMessage = document.querySelector('.win-message');
-    if (existingMessage) existingMessage.remove();
+  // Показ повідомлення про перемогу
+  function showWinMessage() {
+    const minutes = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    const timeString = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
     
     const message = document.createElement('div');
     message.className = 'win-message';
     message.innerHTML = `
-      <h2>${isWin ? 'Перемога!' : 'Гра закінчена'}</h2>
-      <p>${text}</p>
-      <button onclick="this.parentElement.remove(); ${isWin ? 'setupGame()' : 'setupGame()'}">OK</button>
+      <h2>Вітаю, ${playerName}!</h2>
+      <p>Ви перемогли за ${moves} ходів!</p>
+      <p>Час: ${timeString}</p>
+      <button onclick="this.parentElement.remove(); setupGame()">Грати ще</button>
     `;
     document.body.appendChild(message);
   }
@@ -415,8 +388,8 @@
     leaderboard.slice(0, 10).forEach((player, index) => {
       const li = document.createElement('li');
       const minutes = Math.floor(player.time / 60);
-      const seconds = player.time % 60;
-      li.innerHTML = `<strong>${player.name}</strong>: ${player.moves} ходів (${minutes}:${seconds < 10 ? '0' : ''}${seconds})`;
+      const secs = player.time % 60;
+      li.innerHTML = `<strong>${player.name}</strong>: ${player.moves} ходів (${minutes}:${secs < 10 ? '0' : ''}${secs})`;
       scoresList.appendChild(li);
     });
   }
