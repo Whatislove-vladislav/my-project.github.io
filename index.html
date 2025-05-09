@@ -1,174 +1,308 @@
 <!DOCTYPE html>
 <html lang="uk">
-
 <head>
-    <meta charset="UTF-8">
-    <!-- ✅ Мобільна оптимізація -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>П’ятнашки: Mental Detox</title>
-    <style>
-        body {
-            font-family: sans-serif;
-            background: #f0f0f0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-            padding: 10px;
-            box-sizing: border-box;
-        }
-
-        h1 {
-            margin-bottom: 20px;
-            font-size: 1.5rem;
-            text-align: center;
-        }
-
-        #game {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 8px;
-            width: 100%;
-            max-width: 300px;
-            margin: 0 auto;
-        }
-
-        .tile {
-            aspect-ratio: 1;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            font-weight: bold;
-            border-radius: 6px;
-            cursor: pointer;
-            user-select: none;
-            text-align: center;
-            padding: 5px;
-            transition: transform 0.2s ease;
-            /* ✅ Мобільна оптимізація */
-            min-width: 0;
-            word-break: break-word;
-        }
-
-        .tile:active {
-            transform: scale(0.95);
-        }
-
-        .good {
-            background: #fff;
-            color: #000;
-        }
-
-        .bad {
-            background: #000;
-            color: #fff;
-        }
-
-        .empty {
-            background: transparent;
-            border: 1px dashed #ccc;
-            cursor: default;
-        }
-
-        /* ✅ Мобільна оптимізація */
-        @media (max-width: 400px) {
-            .tile {
-                font-size: 12px;
-            }
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>П'ятнашки 5x5: Mental Detox</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      background: #f0f0f0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin-bottom: 10px;
+      font-size: 1.5rem;
+      text-align: center;
+    }
+    #stats {
+      display: flex;
+      justify-content: space-between;
+      width: 100%;
+      max-width: 350px;
+      margin-bottom: 10px;
+    }
+    .stat-box {
+      background: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #game {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      width: 100%;
+      max-width: 350px;
+      margin: 0 auto;
+    }
+    .tile {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      border-radius: 4px;
+      cursor: pointer;
+      user-select: none;
+      text-align: center;
+      padding: 3px;
+      transition: transform 0.2s ease;
+      min-width: 0;
+      word-break: break-word;
+    }
+    .tile:active {
+      transform: scale(0.95);
+    }
+    .good {
+      background: #fff;
+      color: #000;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .bad {
+      background: #000;
+      color: #fff;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    }
+    .empty {
+      background: transparent;
+      border: 1px dashed #ccc;
+      cursor: default;
+    }
+    #controls {
+      margin-top: 15px;
+      display: flex;
+      gap: 10px;
+    }
+    button {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      background: #4CAF50;
+      color: white;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    #leaderboard {
+      margin-top: 20px;
+      width: 100%;
+      max-width: 350px;
+      background: white;
+      border-radius: 8px;
+      padding: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    #leaderboard h2 {
+      margin-top: 0;
+      font-size: 1.2rem;
+      text-align: center;
+    }
+    #leaderboard ol {
+      padding-left: 20px;
+    }
+    @media (max-width: 400px) {
+      .tile {
+        font-size: 10px;
+      }
+      #game {
+        gap: 4px;
+        max-width: 300px;
+      }
+    }
+  </style>
 </head>
-
 <body>
 
-    <h1>П’ятнашки: Mental Detox</h1>
-    <div id="game"></div>
+<h1>П'ятнашки 5×5: Mental Detox</h1>
+<div id="stats">
+  <div class="stat-box">Час: <span id="timer">0</span> сек</div>
+  <div class="stat-box">Ходи: <span id="moves">0</span></div>
+</div>
+<div id="game"></div>
+<div id="controls">
+  <button id="resetButton">Рестарт</button>
+  <button id="newGameButton">Нова гра</button>
+</div>
+<div id="leaderboard">
+  <h2>Таблиця лідерів</h2>
+  <ol id="scoresList">
+    <!-- Тут з'являтимуться результати -->
+  </ol>
+</div>
 
-    <script>
-        const goodTiles = [
-            'Прогулятися', 'Поспілкуватися з друзями', 'Допомогти батькам', 'Зайнятись спортом',
-            'Почитати книгу', 'Помолитись', 'Прибрати дім', 'Послухати музику',
-            'Розпланувати свій час', 'Добре виспатись', 'Зробити уроки', 'Пограти в настільну гру',
-            'Зайнятися хобі'
-        ];
-        const badTiles = ['Рілси', 'Тік Ток'];
-        const replacements = ['Досліджувати Біблію', 'Навчитись чомусь новому'];
+<script>
+  // Початкові дані
+  const goodTiles = [
+    'Прогулятися', 'Поспілкуватися з друзями', 'Допомогти батькам', 'Зайнятись спортом',
+    'Почитати книгу', 'Помолитись', 'Прибрати дім', 'Послухати музику',
+    'Розпланувати свій час', 'Добре виспатись', 'Зробити уроки', 'Пограти в настільну гру',
+    'Зайнятися хобі', 'Вивчити нове слово', 'Намалювати малюнок', 'Зробити зарядку',
+    'Написати листа', 'Вивчити іноземну мову', 'Приготувати їжу', 'Подивитися документальний фільм'
+  ];
+  
+  const badTiles = ['Рілси', 'Тік Ток', 'Порнографія', 'Злісний тролінг'];
+  const replacements = ['Досліджувати Біблію', 'Навчитись чомусь новому', 'Допомогти ближньому'];
+  const gridSize = 5;
+  const cornerIndex = 24;
+  
+  let tiles = [];
+  let timer;
+  let seconds = 0;
+  let moves = 0;
+  let playerName = "Гравець";
+  let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
 
-        let tiles = [...goodTiles, ...badTiles];
-        tiles = shuffle([...tiles, '']);
+  // Ініціалізація гри
+function initGame() {
+    // Запит імені гравця
+    playerName = prompt("Введіть ваше ім'я:", "Гравець") || "Гравець";
+    
+    let allTiles = [...goodTiles, ...badTiles];
+    
+    while (allTiles.length < gridSize * gridSize - 1) {
+      const randomTile = Math.random() > 0.3 
+        ? goodTiles[Math.floor(Math.random() * goodTiles.length)]
+        : badTiles[Math.floor(Math.random() * badTiles.length)];
+      allTiles.push(randomTile);
+    }
+    
+    tiles = shuffle([...allTiles, '']);
+    resetStats();
+    render();
+    updateLeaderboard();
+  }
 
-        const game = document.getElementById('game');
-        const cornerIndex = 15; // ✅ Оптимізація: винесли у змінну
+  // Скидання статистики
+  function resetStats() {
+    clearInterval(timer);
+    seconds = 0;
+    moves = 0;
+    document.getElementById('timer').textContent = '0';
+    document.getElementById('moves').textContent = '0';
+    timer = setInterval(updateTimer, 1000);
+  }
 
-        function render() {
-            game.innerHTML = '';
-            tiles.forEach((text, i) => {
-                const div = document.createElement('div');
-                div.className = 'tile';
-                if (text === '') {
-                    div.classList.add('empty');
-                } else if (badTiles.includes(text)) {
-                    div.classList.add('bad');
-                } else {
-                    div.classList.add('good');
-                }
-                div.textContent = text;
-                div.addEventListener('click', () => moveTile(i));
-                game.appendChild(div);
-            });
-        }
+  // Оновлення таймера
+  function updateTimer() {
+    seconds++;
+    document.getElementById('timer').textContent = seconds;
+  }
 
-        function moveTile(index) {
-            const emptyIndex = tiles.indexOf('');
-            const row = Math.floor(index / 4);
-            const emptyRow = Math.floor(emptyIndex / 4);
+  // Відображення гри
+  function render() {
+    game.innerHTML = '';
+    tiles.forEach((text, i) => {
+      const div = document.createElement('div');
+      div.className = 'tile';
+      if (text === '') {
+        div.classList.add('empty');
+      } else if (badTiles.includes(text)) {
+        div.classList.add('bad');
+      } else {
+        div.classList.add('good');
+      }
+      div.textContent = text;
+      div.addEventListener('click', () => moveTile(i));
+      game.appendChild(div);
+    });
+  }
 
-            // ✅ Оптимізація: точніша перевірка допустимих ходів
-            const validMoves = [
-                index - 1,    // ліво
-                index + 1,    // право
-                index - 4,    // верх
-                index + 4     // низ
-            ];
+  // Рух плитки
+  function moveTile(index) {
+    const emptyIndex = tiles.indexOf('');
+    if (emptyIndex === -1) return;
+    
+    const row = Math.floor(index / gridSize);
+    const emptyRow = Math.floor(emptyIndex / gridSize);
+    
+    const validMoves = [
+      index - 1,    // ліво
+      index + 1,    // право
+      index - gridSize, // верх
+      index + gridSize  // низ
+    ];
+    
+    if (validMoves.includes(emptyIndex) && 
+        (Math.abs(index - emptyIndex) === 1 ? row === emptyRow : true)) {
+      [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+      moves++;
+      document.getElementById('moves').textContent = moves;
+      checkBadTileInCorner();
+      checkWin();
+      render();
+    }
+  }
 
-            if (
-                validMoves.includes(emptyIndex) &&
-                (Math.abs(index - emptyIndex) === 1 ? row === emptyRow : true)
-            ) {
-                [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
-                checkBadTileInCorner();
-                render();
-            }
-        }
+  // Перевірка поганої плитки в кутку
+  function checkBadTileInCorner() {
+    if (badTiles.includes(tiles[cornerIndex])) {
+      const replacement = replacements[Math.floor(Math.random() * replacements.length)];
+      tiles[cornerIndex] = replacement;
+    }
+  }
 
-        function checkBadTileInCorner() {
-            if (badTiles.includes(tiles[cornerIndex])) {
-                const replacement = replacements[Math.floor(Math.random() * replacements.length)];
-                tiles[cornerIndex] = replacement;
-                // ✅ Візуальний фідбек для гравця
-                setTimeout(() => {
-                    alert(`Плитку замінено на: ${replacement}`);
-                }, 100);
-            }
-        }
+  // Перевірка перемоги
+  function checkWin() {
+    if (!tiles.some(tile => badTiles.includes(tile))) {
+      clearInterval(timer);
+      const score = calculateScore();
+      leaderboard.push({ name: playerName, time: seconds, moves: moves, score: score });
+      leaderboard.sort((a, b) => a.score - b.score);
+      if (leaderboard.length > 10) leaderboard = leaderboard.slice(0, 10);
+      localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+      alert(`Вітаю, ${playerName}! Ви перемогли за ${seconds} сек і ${moves} ходів!`);
+      updateLeaderboard();
+    }
+  }
 
-        function shuffle(array) {
-            for (let i = array.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1));
-                [array[i], array[j]] = [array[j], array[i]];
-            }
-            return array;
-        }
+  // Розрахунок очок (менше = краще)
+  function calculateScore() {
+    return seconds + moves * 0.5; // Кожен ход = 0.5 сек
+  }
 
-        // ✅ Додано обробник для сенсорних пристроїв
-        document.addEventListener('touchstart', function () { }, { passive: true });
+  // Оновлення таблиці лідерів
+  function updateLeaderboard() {
+    const scoresList = document.getElementById('scoresList');
+    scoresList.innerHTML = '';
+    leaderboard.slice(0, 10).forEach((player, index) => {
+      const li = document.createElement('li');
+      li.innerHTML = `<strong>${player.name}</strong>: ${player.time} сек, ${player.moves} ходів`;
+      scoresList.appendChild(li);
+    });
+  }
 
-        render();
-    </script>
+  // Перемішування масиву
+  function shuffle(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+  }
+
+  // Обробники подій
+  document.getElementById('resetButton').addEventListener('click', () => {
+    tiles = shuffle(tiles.filter(tile => tile !== '')).concat('');
+    resetStats();
+    render();
+  });
+
+  document.getElementById('newGameButton').
+
+      addEventListener('click', initGame);
+  document.addEventListener('touchstart', function() {}, {passive: true});
+
+  // Початок гри
+  initGame();
+</script>
 
 </body>
-
 </html>
