@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>П'ятнашки 6x6: Квадратний виклик</title>
+  <title>П'ятнашки 6x6: Останній ряд</title>
   <style>
     body {
       font-family: sans-serif;
@@ -91,13 +91,14 @@
       cursor: pointer;
       font-size: 14px;
     }
-    #corner-info {
+    #instructions {
       margin-top: 15px;
       padding: 10px;
       background: #fff;
       border-radius: 6px;
       max-width: 400px;
       text-align: center;
+      font-size: 14px;
     }
     @media (max-width: 450px) {
       .tile {
@@ -112,14 +113,16 @@
 </head>
 <body>
 
-<h1>П'ятнашки 6×6: Квадратний виклик</h1>
+<h1>П'ятнашки 6×6: Останній ряд</h1>
 <div id="stats">
   <div class="stat-box">Час: <span id="timer">0</span> сек</div>
   <div class="stat-box">Ходи: <span id="moves">0</span></div>
 </div>
 <div id="game"></div>
-<div id="corner-info">
-  Зберіть 4 чорні плитки у квадрат 2×2 у будь-якому кутку
+<div id="instructions">
+  <strong>Завдання:</strong> Розставте чорні плитки в <strong>останньому рядку</strong> у такому порядку:<br>
+  Тік Ток → Рілси → Бравл Старс → Інстаграм → Ютуб Шортс → Снапчат<br>
+  Вільна клітинка може бути лише одна!
 </div>
 <div id="controls">
   <button id="resetButton">Рестарт</button>
@@ -127,6 +130,11 @@
 </div>
 
 <script>
+  // Строгий порядок для останнього ряду
+  const FINAL_ORDER = ['Тік Ток', 'Рілси', 'Бравл Старс', 'Інстаграм', 'Ютуб Шортс', 'Снапчат'];
+  const gridSize = 6;
+  const lastRowStart = gridSize * (gridSize - 1); // Індекс першої клітинки останнього ряду (30)
+  
   // Початкові дані
   const goodTiles = [
     'Прогулятися', 'Поспілкуватися', 'Допомогти батькам', 'Спорт',
@@ -137,9 +145,8 @@
     'Медитація', 'Щоденник', 'Волонтерство', 'Навчання'
   ];
   
-  const badTiles = ['Рілси', 'Тік Ток', 'Бравл Старс', 'Тролінг', 'Інстаграм'];
+  const badTiles = [...FINAL_ORDER];
   const replacements = ['Досліджувати Біблію', 'Навчитись чомусь новому', 'Допомогти ближньому', 'Подзвонити рідним'];
-  const gridSize = 6;
   
   let tiles = [];
   let timer;
@@ -151,19 +158,23 @@
   function initGame() {
     playerName = prompt("Введіть ваше ім'я:", "Гравець") || "Гравець";
     
+    // Створюємо масив з усіма плитками
     let allTiles = [...goodTiles, ...badTiles];
     
+    // Перемішуємо всі плитки, крім тих, що мають бути в останньому рядку
+    allTiles = shuffle(allTiles.filter(tile => !badTiles.includes(tile)));
+    
     // Додаємо плитки до 36 клітинок (6x6)
-    while (allTiles.length < gridSize * gridSize - 4) { // -4 тому що 4 плитки будуть пустими
-      const randomTile = Math.
-        random() > 0.3 
-        ? goodTiles[Math.floor(Math.random() * goodTiles.length)]
-        : badTiles[Math.floor(Math.random() * badTiles.length)];
+    while (allTiles.length < gridSize * gridSize - 1 - badTiles.length) {
+      const randomTile = goodTiles[Math.floor(Math.random() * goodTiles.length)];
       allTiles.push(randomTile);
     }
     
-    // Додаємо 4 пусті клітинки
-    tiles = shuffle([...allTiles, '', '', '', '']);
+    // Додаємо чорні плитки (поки що в довільних місцях)
+    allTiles.push(...badTiles);
+    
+    // Додаємо 1 пусту клітинку
+    tiles = shuffle([...allTiles, '']);
     resetStats();
     render();
   }
@@ -201,63 +212,47 @@
       div.addEventListener('click', () => moveTile(i));
       game.appendChild(div);
     });
-    checkForSquare();
+    checkWin();
   }
 
   // Рух плитки
   function moveTile(index) {
-    const emptyIndices = [];
-    tiles.forEach((tile, i) => tile === '' && emptyIndices.push(i));
+    const emptyIndex = tiles.indexOf('');
+    if (emptyIndex === -1) return;
     
-    for (const emptyIndex of emptyIndices) {
-      const row = Math.floor(index / gridSize);
-      const emptyRow = Math.floor(emptyIndex / gridSize);
-      
-      const validMoves = [
-        index - 1,    // ліво
-        index + 1,    // право
-        index - gridSize, // верх
-        index + gridSize  // низ
-      ];
-      
-      if (validMoves.includes(emptyIndex) && 
-          (Math.abs(index - emptyIndex) === 1 ? row === emptyRow : true)) {
-        [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
-        moves++;
-        document.getElementById('moves').textContent = moves;
-        render();
-        return;
-      }
+    const row = Math.floor(index / gridSize);
+    const emptyRow = Math.floor(emptyIndex / gridSize);
+    
+    const validMoves = [
+      index - 1,    // ліво
+      index + 1,    // право
+      index - gridSize, // верх
+      index + gridSize  // низ
+    ];
+    
+    if (validMoves.includes(emptyIndex) && 
+        (Math.abs(index - emptyIndex) === 1 ? row === emptyRow : true)) {
+      [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+      moves++;
+      document.getElementById('moves').textContent = moves;
+      render();
     }
   }
 
-  // Перевірка на квадрат 2x2 з чорних плиток у кутку
-  function checkForSquare() {
-    const corners = [
-      [0, 1, 6, 7],     // Верхній лівий кут
-      [4, 5, 10, 11],    // Верхній правий кут
-      [24, 25, 30, 31],  // Нижній лівий кут
-      [28, 29, 34, 35]   // Нижній правий кут
-    ];
+  // Перевірка на перемогу
+  function checkWin() {
+    const lastRow = tiles.slice(lastRowStart, lastRowStart + gridSize);
+    const isWin = lastRow.every((tile, i) => tile === FINAL_ORDER[i]);
     
-    for (const corner of corners) {
-      if (corner.every(index => badTiles.includes(tiles[index]))) {
-        // Знайшли квадрат 2x2 - замінюємо плитки
-        corner.forEach(index => {
-          const replacement = replacements[Math.floor(Math.random() * replacements.length)];
-          tiles[index] = replacement;
-        });
-        
-        // Анімація зміни
-        setTimeout(() => {
-          render();
-          if (!tiles.some(tile => badTiles.includes(tile))) {
-            clearInterval(timer);
-            alert(`Вітаю, ${playerName}! Ви перемогли за ${seconds} сек і ${moves} ходів!`);
-          }
-        }, 300);
-        return;
-      }
+    if (isWin) {
+      // Замінюємо всі чорні плитки на білі
+      tiles = tiles.map(tile => badTiles.includes(tile) ? replacements[Math.floor(Math.random() * replacements.length)] : tile);
+      
+      clearInterval(timer);
+      setTimeout(() => {
+        render();
+        alert(`Вітаю, ${playerName}! Ви перемогли за ${seconds} сек і ${moves} ходів!`);
+      }, 300);
     }
   }
 
