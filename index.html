@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>П'ятнашки 6x6: Останній ряд</title>
+  <title>П'ятнашки 6x6: Бомби та Час</title>
   <style>
     body {
       font-family: sans-serif;
@@ -55,12 +55,13 @@
       user-select: none;
       text-align: center;
       padding: 2px;
-      transition: all 0.3s ease;
+      transition: transform 0.3s ease, background-color 0.3s ease;
       min-width: 0;
       word-break: break-word;
+      will-change: transform;
     }
     .tile:active {
-      transform: scale(0.95);
+      transform: scale(0.97);
     }
     .good {
       background: #fff;
@@ -77,6 +78,12 @@
       border: 1px dashed #ccc;
       cursor: default;
     }
+    .bomb {
+      background: #d32f2f;
+      color: white;
+      cursor: not-allowed;
+      font-size: 16px;
+    }
     #controls {
       margin-top: 15px;
       display: flex;
@@ -90,6 +97,10 @@
       color: white;
       cursor: pointer;
       font-size: 14px;
+      transition: opacity 0.2s;
+    }
+    button:active {
+      opacity: 0.8;
     }
     #instructions {
       margin-top: 15px;
@@ -99,6 +110,31 @@
       max-width: 400px;
       text-align: center;
       font-size: 14px;
+    }
+    #leaderboard {
+      margin-top: 15px;
+      width: 100%;
+      max-width: 400px;
+      background: white;
+      border-radius: 6px;
+      padding: 10px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    #leaderboard h2 {
+      margin-top: 0;
+      text-align: center;
+      font-size: 1.2rem;
+    }
+    #leaderboard ol {
+      padding-left: 20px;
+    }
+    .time-warning {
+      color: #d32f2f;
+      animation: pulse 0.5s infinite alternate;
+    }
+    @keyframes pulse {
+      from { opacity: 1; }
+      to { opacity: 0.5; }
     }
     @media (max-width: 450px) {
       .tile {
@@ -113,29 +149,35 @@
 </head>
 <body>
 
-<h1>П'ятнашки 6×6: Останній ряд</h1>
+<h1>П'ятнашки 6×6: Бомби та Час</h1>
 <div id="stats">
-  <div class="stat-box">Час: <span id="timer">0</span> сек</div>
+  <div class="stat-box">Час: <span id="timer" class="time-warning">4:00</span></div>
   <div class="stat-box">Ходи: <span id="moves">0</span></div>
 </div>
 <div id="game"></div>
 <div id="instructions">
-  <strong>Завдання:</strong> Розставте чорні плитки в <strong>останньому рядку</strong> у такому порядку:<br>
+  <strong>Завдання:</strong> Розставте чорні плитки в останньому рядку у порядку:<br>
   Тік Ток → Рілси → Бравл Старс → Інстаграм → Ютуб Шортс → Снапчат<br>
-  Вільна клітинка може бути лише одна!
+  <span style="color: #d32f2f">💣</span> - Бомба (не пересувається)
 </div>
 <div id="controls">
   <button id="resetButton">Рестарт</button>
   <button id="newGameButton">Нова гра</button>
 </div>
+<div id="leaderboard">
+  <h2>Топ 10 гравців</h2>
+  <ol id="scoresList"></ol>
+</div>
 
 <script>
-  // Строгий порядок для останнього ряду
+  // Константи гри
   const FINAL_ORDER = ['Тік Ток', 'Рілси', 'Бравл Старс', 'Інстаграм', 'Ютуб Шортс', 'Снапчат'];
   const gridSize = 6;
-  const lastRowStart = gridSize * (gridSize - 1); // Індекс першої клітинки останнього ряду (30)
+  const lastRowStart = gridSize * (gridSize - 1);
+  const initialTime = 4 * 60; // 4 хвилини у секундах
+  const BOMB = '💣';
   
-  // Початкові дані
+  // Дані гри
   const goodTiles = [
     'Прогулятися', 'Поспілкуватися', 'Допомогти батькам', 'Спорт',
     'Книга', 'Молитва', 'Прибирання', 'Музика',
@@ -146,53 +188,81 @@
   ];
   
   const badTiles = [...FINAL_ORDER];
-  const replacements = ['Досліджувати Біблію', 'Навчитись чомусь новому', 'Допомогти ближньому', 'Подзвонити рідним'];
+  const replacements = ['Досліджувати Біблію', 'Навчитись чомусь новому', 'Допомогти ближньому'];
   
+  // Стан гри
   let tiles = [];
   let timer;
-  let seconds = 0;
+  let timeLeft = initialTime;
   let moves = 0;
   let playerName = "Гравець";
+  let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
+  let bombPosition = -1;
 
   // Ініціалізація гри
   function initGame() {
     playerName = prompt("Введіть ваше ім'я:", "Гравець") || "Гравець";
-    
-    // Створюємо масив з усіма плитками
+    setupGame();
+  }
+
+  function setupGame() {
+    // Створюємо масив плиток
     let allTiles = [...goodTiles, ...badTiles];
     
-    // Перемішуємо всі плитки, крім тих, що мають бути в останньому рядку
-    allTiles = shuffle(allTiles.filter(tile => !badTiles.includes(tile)));
+    // Визначаємо позицію бомби у перших двох рядках (0-11 клітинки)
+    bombPosition = Math.floor(Math.random() * 12);
     
-    // Додаємо плитки до 36 клітинок (6x6)
-    while (allTiles.length < gridSize * gridSize - 1 - badTiles.length) {
+    // Додаємо плитки до 35 клітинок (36 - 1 бомба)
+    while (allTiles.length < gridSize * gridSize - 1) {
       const randomTile = goodTiles[Math.floor(Math.random() * goodTiles.length)];
       allTiles.push(randomTile);
     }
     
-    // Додаємо чорні плитки (поки що в довільних місцях)
-    allTiles.push(...badTiles);
-    
     // Додаємо 1 пусту клітинку
     tiles = shuffle([...allTiles, '']);
+    
+    // Вставляємо бомбу на випадкову позицію у перших двох рядках
+    tiles.splice(bombPosition, 0, BOMB);
+    tiles.pop(); // Видаляємо зайву плитку
+    
     resetStats();
     render();
+    updateLeaderboard();
   }
 
   // Скидання статистики
   function resetStats() {
     clearInterval(timer);
-    seconds = 0;
+    timeLeft = initialTime;
     moves = 0;
-    document.getElementById('timer').textContent = '0';
+    updateTimerDisplay();
     document.getElementById('moves').textContent = '0';
     timer = setInterval(updateTimer, 1000);
   }
 
   // Оновлення таймера
   function updateTimer() {
-    seconds++;
-    document.getElementById('timer').textContent = seconds;
+    timeLeft--;
+    updateTimerDisplay();
+    
+    if (timeLeft <= 0) {
+      clearInterval(timer);
+      alert("Час вийшов! Спробуйте ще раз.");
+      setupGame();
+    }
+  }
+
+  function updateTimerDisplay() {
+    const minutes = Math.floor(timeLeft / 60);
+    const seconds = timeLeft % 60;
+    const timerElement = document.getElementById('timer');
+    timerElement.textContent = `${minutes}:${seconds < 10 ? '0' : ''}${seconds}`;
+    
+    if (timeLeft <= 30) {
+      timerElement.classList.add('time-warning');
+    } else {
+      timerElement.classList.remove('time-warning');
+    }
   }
 
   // Відображення гри
@@ -201,22 +271,34 @@
     tiles.forEach((text, i) => {
       const div = document.createElement('div');
       div.className = 'tile';
-      if (text === '') {
+      
+      if (text === BOMB) {
+        div.classList.add('bomb');
+        div.textContent = BOMB;
+      } else if (text === '') {
         div.classList.add('empty');
       } else if (badTiles.includes(text)) {
         div.classList.add('bad');
+        div.textContent = text;
       } else {
         div.classList.add('good');
+        div.textContent = text;
       }
-      div.textContent = text;
-      div.addEventListener('click', () => moveTile(i));
+      
+      if (text !== BOMB && text !== '') {
+        div.addEventListener('click', () => moveTile(i));
+      }
+      
       game.appendChild(div);
     });
+    
     checkWin();
   }
 
   // Рух плитки
   function moveTile(index) {
+    if (index === bombPosition) return;
+    
     const emptyIndex = tiles.indexOf('');
     if (emptyIndex === -1) return;
     
@@ -232,10 +314,16 @@
     
     if (validMoves.includes(emptyIndex) && 
         (Math.abs(index - emptyIndex) === 1 ? row === emptyRow : true)) {
-      [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
-      moves++;
-      document.getElementById('moves').textContent = moves;
-      render();
+      // Плавна анімація руху
+      const tileElement = document.querySelector(`.tile:nth-child(${index + 1})`);
+      tileElement.style.transform = 'scale(0.9)';
+      
+      setTimeout(() => {
+        [tiles[index], tiles[emptyIndex]] = [tiles[emptyIndex], tiles[index]];
+        moves++;
+        document.getElementById('moves').textContent = moves;
+        render();
+      }, 150);
     }
   }
 
@@ -245,15 +333,41 @@
     const isWin = lastRow.every((tile, i) => tile === FINAL_ORDER[i]);
     
     if (isWin) {
-      // Замінюємо всі чорні плитки на білі
-      tiles = tiles.map(tile => badTiles.includes(tile) ? replacements[Math.floor(Math.random() * replacements.length)] : tile);
-      
       clearInterval(timer);
+      
+      // Додаємо результат до таблиці лідерів
+      leaderboard.push({
+        name: playerName,
+        moves: moves,
+        time: initialTime - timeLeft
+      });
+      
+      // Сортуємо за кількістю ходів
+      leaderboard.sort((a, b) => a.moves - b.moves);
+      if (leaderboard.length > 10) leaderboard = leaderboard.slice(0, 10);
+      
+      localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+      
       setTimeout(() => {
-        render();
-        alert(`Вітаю, ${playerName}! Ви перемогли за ${seconds} сек і ${moves} ходів!`);
+        alert(`Вітаю, ${playerName}! Ви перемогли за ${moves} ходів!`);
+        updateLeaderboard();
+        setupGame();
       }, 300);
     }
+  }
+
+  // Оновлення таблиці лідерів
+  function updateLeaderboard() {
+    const scoresList = document.getElementById('scoresList');
+    scoresList.innerHTML = '';
+    
+    leaderboard.slice(0, 10).forEach((player, index) => {
+      const li = document.createElement('li');
+      const minutes = Math.floor(player.time / 60);
+      const seconds = player.time % 60;
+      li.innerHTML = `<strong>${player.name}</strong>: ${player.moves} ходів (${minutes}:${seconds < 10 ? '0' : ''}${seconds})`;
+      scoresList.appendChild(li);
+    });
   }
 
   // Перемішування масиву
@@ -266,13 +380,7 @@
   }
 
   // Обробники подій
-  document.getElementById('resetButton').addEventListener('click', () => {
-    tiles = shuffle(tiles.filter(tile => tile !== ''));
-    while (tiles.length < gridSize * gridSize) tiles.push('');
-    resetStats();
-    render();
-  });
-
+  document.getElementById('resetButton').addEventListener('click', setupGame);
   document.getElementById('newGameButton').addEventListener('click', initGame);
   document.addEventListener('touchstart', function() {}, {passive: true});
 
