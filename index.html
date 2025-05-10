@@ -143,15 +143,30 @@
       animation: fadeIn 0.3s;
       max-width: 80%;
     }
+    .timeout-message {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(211, 47, 47, 0.95);
+      color: white;
+      padding: 20px 30px;
+      border-radius: 10px;
+      text-align: center;
+      z-index: 100;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+      animation: fadeIn 0.3s;
+      max-width: 80%;
+    }
     @keyframes fadeIn {
       from { opacity: 0; transform: translate(-50%, -60%); }
       to { opacity: 1; transform: translate(-50%, -50%); }
     }
-    .win-message h2 {
+    .win-message h2, .timeout-message h2 {
       margin-top: 0;
       font-size: 1.5rem;
     }
-    .win-message button {
+    .win-message button, .timeout-message button {
       background: white;
       color: #4CAF50;
       border: none;
@@ -160,6 +175,9 @@
       margin-top: 15px;
       cursor: pointer;
       font-weight: bold;
+    }
+    .timeout-message button {
+      color: #d32f2f;
     }
     @media (max-width: 450px) {
       .tile {
@@ -176,8 +194,9 @@
 
 <h1>Ненаситна порожнеча</h1>
 <div id="stats">
-  <div class="stat-box">Час: <span id="timer">0:00</span></div>
+  <div class="stat-box">Час: <span id="timer">4:00</span></div>
   <div class="stat-box">Ходи: <span id="moves">0</span></div>
+  <div class="stat-box">Правильні: <span id="correct">0</span>/6</div>
 </div>
 <div id="game"></div>
 <div id="instructions">
@@ -200,6 +219,7 @@
   const gridSize = 6;
   const lastRowStart = gridSize * (gridSize - 1);
   const BOMB = '💣';
+  const TIME_LIMIT = 4 * 60; // 4 хвилини в секундах
   
   // Дані гри
   const goodTiles = [
@@ -212,15 +232,15 @@
   ];
   
   const badTiles = [...FINAL_ORDER];
-  const replacements = ['Досліджувати Біблію', 'Навчитись чомусь новому', 'Допомогти ближньому'];
   
   // Стан гри
   let tiles = [];
   let timer;
-  let seconds = 0;
+  let seconds = TIME_LIMIT;
   let moves = 0;
+  let correctCount = 0;
   let playerName = "Гравець";
-  let leaderboard = []; // Очищена таблиця лідерів
+  let leaderboard = JSON.parse(localStorage.getItem('leaderboard')) || [];
 
   // Ініціалізація гри
   function initGame() {
@@ -234,11 +254,12 @@
     // Створюємо масив плиток
     let allTiles = [...goodTiles, ...badTiles];
     
-    // Визначаємо позицію бомби у перших двох рядках (0-11 клітинки)
-    const bombPosition = Math.floor(Math.random() * 12);
+    // Визначаємо позиції для двох бомб (одна в перших двох рядках, інша в 1-3 рядках)
+    const bombPosition1 = Math.floor(Math.random() * 12); // 0-11 (перші два ряди)
+    const bombPosition2 = Math.floor(Math.random() * 18) + 6; // 6-23 (2-4 ряди)
     
-    // Додаємо плитки до 35 клітинок (36 - 1 бомба)
-    while (allTiles.length < gridSize * gridSize - 1) {
+    // Додаємо плитки до 34 клітинок (36 - 2 бомби)
+    while (allTiles.length < gridSize * gridSize - 2) {
       const randomTile = goodTiles[Math.floor(Math.random() * goodTiles.length)];
       allTiles.push(randomTile);
     }
@@ -246,9 +267,14 @@
     // Додаємо 1 пусту клітинку
     tiles = shuffle([...allTiles, '']);
     
-    // Вставляємо бомбу на випадкову позицію у перших двох рядках
-    tiles.splice(bombPosition, 0, BOMB);
-    tiles.pop(); // Видаляємо зайву плитку
+    // Вставляємо бомби на випадкові позиції
+    tiles.splice(bombPosition1, 0, BOMB);
+    if (bombPosition2 >= bombPosition1) {
+      tiles.splice(bombPosition2 + 1, 0, BOMB);
+    } else {
+      tiles.splice(bombPosition2, 0, BOMB);
+    }
+    tiles = tiles.slice(0, gridSize * gridSize); // Обрізаємо зайві
     
     resetStats();
     render();
@@ -258,23 +284,37 @@
   // Скидання статистики
   function resetStats() {
     clearInterval(timer);
-    seconds = 0;
+    seconds = TIME_LIMIT;
     moves = 0;
+    correctCount = 0;
     updateTimerDisplay();
     document.getElementById('moves').textContent = '0';
+    document.getElementById('correct').textContent = '0';
     timer = setInterval(updateTimer, 1000);
   }
 
-  // Оновлення таймера (тепер рахує вперед)
+  // Оновлення таймера (зворотний відлік)
   function updateTimer() {
-    seconds++;
+    seconds--;
     updateTimerDisplay();
+    
+    if (seconds <= 0) {
+      clearInterval(timer);
+      showTimeoutMessage();
+    }
   }
 
   function updateTimerDisplay() {
     const minutes = Math.floor(seconds / 60);
     const secs = seconds % 60;
     document.getElementById('timer').textContent = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
+    
+    // Зміна кольору при менше 1 хвилини
+    if (seconds < 60) {
+      document.getElementById('timer').style.color = '#d32f2f';
+    } else {
+      document.getElementById('timer').style.color = '';
+    }
   }
 
   // Відображення гри
@@ -304,7 +344,7 @@
       game.appendChild(div);
     });
     
-    checkWin();
+    checkCorrectTiles();
   }
 
   // Рух плитки
@@ -336,48 +376,89 @@
     }
   }
 
-  // Перевірка на перемогу
-  function checkWin() {
+  // Перевірка правильно розташованих плиток
+  function checkCorrectTiles() {
     const lastRow = tiles.slice(lastRowStart, lastRowStart + gridSize);
-    const isWin = lastRow.every((tile, i) => tile === FINAL_ORDER[i]);
+    let newCorrectCount = 0;
     
-    if (isWin) {
+    for (let i = 0; i < FINAL_ORDER.length; i++) {
+      if (lastRow[i] === FINAL_ORDER[i]) {
+        newCorrectCount++;
+      } else {
+        break; // Тільки послідовні правильні плитки
+      }
+    }
+    
+    if (newCorrectCount !== correctCount) {
+      correctCount = newCorrectCount;
+      document.getElementById('correct').textContent = correctCount;
+    }
+    
+    // Перевірка на повну перемогу
+    if (correctCount === FINAL_ORDER.length) {
       clearInterval(timer);
-      
-      // Додаємо результат до таблиці лідерів
-      leaderboard.push({
-        name: playerName,
-        moves: moves,
-        time: seconds
-      });
-      
-      // Сортуємо за кількістю ходів
-      leaderboard.sort((a, b) => a.moves - b.moves);
-      if (leaderboard.length > 10) leaderboard = leaderboard.slice(0, 10);
-      
-      localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
-      
-      // Показуємо повідомлення про перемогу
       showWinMessage();
-      updateLeaderboard();
     }
   }
 
   // Показ повідомлення про перемогу
   function showWinMessage() {
-    const minutes = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    const timeString = `${minutes}:${secs < 10 ? '0' : ''}${secs}`;
-    
     const message = document.createElement('div');
     message.className = 'win-message';
     message.innerHTML = `
       <h2>Вітаю, ${playerName}!</h2>
-      <p>Ви перемогли за ${moves} ходів!</p>
-      <p>Час: ${timeString}</p>
+      <p>Ви склали ${correctCount} правильних плиток!</p>
+      <p>Витратили ${moves} ходів!</p>
+      <p>Залишилось часу: ${Math.floor(seconds/60)}:${seconds%60 < 10 ? '0' : ''}${seconds%60}</p>
       <button onclick="this.parentElement.remove(); setupGame()">Грати ще</button>
     `;
     document.body.appendChild(message);
+    
+    // Додаємо результат до таблиці лідерів
+    leaderboard.push({
+      name: playerName,
+      correct: correctCount,
+      moves: moves,
+      timeLeft: seconds
+    });
+    
+    // Сортуємо за кількістю правильних плиток і часом
+    leaderboard.sort((a, b) => {
+      if (b.correct !== a.correct) return b.correct - a.correct;
+      return b.timeLeft - a.timeLeft;
+    });
+    
+    if (leaderboard.length > 10) leaderboard = leaderboard.slice(0, 10);
+    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+    updateLeaderboard();
+  }
+
+  // Показ повідомлення про закінчення часу
+  function showTimeoutMessage() {
+    const message = document.createElement('div');
+    message.className = 'timeout-message';
+    message.innerHTML = `
+      <h2>Час вийшов, ${playerName}!</h2>
+      <p>Ви встигли скласти ${correctCount} правильних плиток з ${FINAL_ORDER.length}</p>
+      <p>Використано ходів: ${moves}</p>
+      <button onclick="this.parentElement.remove(); setupGame()">Спробувати ще</button>
+    `;
+    document.body.appendChild(message);
+    
+    // Додаємо результат до таблиці лідерів
+    leaderboard.push({
+      name: playerName,
+      correct: correctCount,
+      moves: moves,
+      timeLeft: 0
+    });
+    
+    // Сортуємо за кількістю правильних плиток
+    leaderboard.sort((a, b) => b.correct - a.correct);
+    
+    if (leaderboard.length > 10) leaderboard = leaderboard.slice(0, 10);
+    localStorage.setItem('leaderboard', JSON.stringify(leaderboard));
+    updateLeaderboard();
   }
 
   // Оновлення таблиці лідерів
@@ -387,9 +468,9 @@
     
     leaderboard.slice(0, 10).forEach((player, index) => {
       const li = document.createElement('li');
-      const minutes = Math.floor(player.time / 60);
-      const secs = player.time % 60;
-      li.innerHTML = `<strong>${player.name}</strong>: ${player.moves} ходів (${minutes}:${secs < 10 ? '0' : ''}${secs})`;
+      const minutes = Math.floor(player.timeLeft / 60);
+      const secs = player.timeLeft % 60;
+      li.innerHTML = `<strong>${player.name}</strong>: ${player.correct} правильних (${player.moves} ходів, залиш. ${minutes}:${secs < 10 ? '0' : ''}${secs})`;
       scoresList.appendChild(li);
     });
   }
