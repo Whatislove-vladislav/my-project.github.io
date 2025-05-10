@@ -194,7 +194,7 @@
 
 <h1>Ненаситна порожнеча</h1>
 <div id="stats">
-  <div class="stat-box">Час: <span id="timer">4:00</span></div>
+  <div class="stat-box">Час: <span id="timer">3:00</span></div>
   <div class="stat-box">Ходи: <span id="moves">0</span></div>
   <div class="stat-box">Правильні: <span id="correct">0</span>/6</div>
 </div>
@@ -219,7 +219,7 @@
   const gridSize = 6;
   const lastRowStart = gridSize * (gridSize - 1);
   const BOMB = '💣';
-  const TIME_LIMIT = 4 * 60; // 4 хвилини в секундах
+  const TIME_LIMIT = 3 * 60; // Змінено на 3 хвилини
   
   // Дані гри
   const goodTiles = [
@@ -254,9 +254,11 @@
     // Створюємо масив плиток
     let allTiles = [...goodTiles, ...badTiles];
     
-    // Визначаємо позиції для двох бомб (одна в перших двох рядках, інша в 1-3 рядках)
-    const bombPosition1 = Math.floor(Math.random() * 12); // 0-11 (перші два ряди)
-    const bombPosition2 = Math.floor(Math.random() * 18) + 6; // 6-23 (2-4 ряди)
+    // Перша бомба - у перших двох рядках (0-11 клітинки)
+    const bombPosition1 = Math.floor(Math.random() * 12);
+    
+    // Друга бомба - у рядках 1-3 (6-23 клітинки)
+    const bombPosition2 = Math.floor(Math.random() * 18) + 6;
     
     // Додаємо плитки до 34 клітинок (36 - 2 бомби)
     while (allTiles.length < gridSize * gridSize - 2) {
@@ -319,6 +321,7 @@
 
   // Відображення гри
   function render() {
+    const game = document.getElementById('game');
     game.innerHTML = '';
     tiles.forEach((text, i) => {
       const div = document.createElement('div');
